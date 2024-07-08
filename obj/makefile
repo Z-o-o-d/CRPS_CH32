@@ -53,7 +53,7 @@ all: CRPS.elf secondary-outputs
 
 # 工具调用
 CRPS.elf: $(OBJS) $(USER_OBJS)
-	@	@	riscv-none-embed-gcc -march=rv32imacxw -mabi=ilp32 -msmall-data-limit=8 -msave-restore -Os -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-common -Wunused -Wuninitialized  -g -T "C:\Users\87407\OneDrive\EMBcompCRPS_CH32\prj\CRPS\Ld\Link.ld" -nostartfiles -Xlinker --gc-sections -Wl,-Map,"CRPS.map" --specs=nano.specs --specs=nosys.specs -o "CRPS.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	@	@	riscv-none-embed-gcc -march=rv32imacxw -mabi=ilp32 -msmall-data-limit=8 -msave-restore -Os -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-common -Wunused -Wuninitialized  -g -T "C:\Users\87407\OneDrive\EMBcompCRPS_CH32\prj\CRPS\Ld\Link.ld" -nostartfiles -Xlinker --gc-sections -Wl,-Map,"CRPS.map" --specs=nano.specs --specs=nosys.specs  -o "CRPS.elf" $(OBJS) $(USER_OBJS) $(LIBS) -lprintfloat
 	@	@
 CRPS.hex: CRPS.elf
 	@	riscv-none-embed-objcopy -O ihex "CRPS.elf"  "CRPS.hex"
