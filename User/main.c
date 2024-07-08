@@ -316,13 +316,11 @@ int main(void)
 	    temp[var]=AT24CXX_ReadWord(var);
 
 //        temp[var]=AT24CXX_ReadNByte(var,2);
-
 //        temp1[var]=AT24CXX_ReadOneByte(var);
 //	    printf("var,Value:0x%02x,%04x,%lf\r\n",var,temp[var],decodeLinear11(temp[var]));
-
 //	    I2C_ReadRegister(I2C2, I2C_Register)
 
-//        Delay_Ms(1000);
+        Delay_Ms(10);
 
         }
 
@@ -341,7 +339,7 @@ int main(void)
         temp_val=0x90;
         printf("fanspeed:%lf \r\n",(temp[temp_val])/1.0);
 
-	    Delay_Ms(1000);
+        printf("VI_POUT:%lf \r\n",((temp[0x8c]&0x7ff)/256.0)*((temp[0x8b])/512.0));
 
 	}
 }
