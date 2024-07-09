@@ -66,30 +66,6 @@ void IIC_Init(u32 bound, u16 address)
 
 
 
-// 解码 linear11 数据格式的函数
-float decodeLinear11(uint16_t rawValue) {
-    // 提取前11位 Y (2's 补码)
-    int16_t Y = (rawValue & 0xFFE0) >> 5;
-
-    // 处理 Y 为负数的情况
-    if (Y & 0x0400) { // 检查符号位（第11位）
-        Y |= 0xF800; // 扩展符号位到16位
-    }
-
-    // 提取后5位 N (2's 补码)
-    int8_t N = rawValue & 0x1F;
-
-    // 处理 N 为负数的情况
-    if (N & 0x10) { // 检查符号位（第5位）
-        N |= 0xE0; // 扩展符号位到8位
-    }
-
-    // 计算电压值 X = Y * 2^N
-    float voltage = (float)Y * pow(2, N);
-
-    return voltage;
-}
-
 
 
 
@@ -102,62 +78,7 @@ float decodeLinear11(uint16_t rawValue) {
  *
  * @return  temp - Read data.
  */
-u8 AT24CXX_ReadNByte(u16 ReadAddr,u16 n)
-{
-    u8 temp = 0;
-//        printf("111111/r/n");
-//        Delay_Ms(100);
-    while(I2C_GetFlagStatus(I2C2, I2C_FLAG_BUSY) != RESET)
-        ;
-    I2C_GenerateSTART(I2C2, ENABLE);
-
-    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT))
-        ;
-    I2C_Send7bitAddress(I2C2, 0xB0, I2C_Direction_Transmitter);
-
-    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
-        ;
-
-    I2C_SendData(I2C2, (u8)(ReadAddr & 0x00FF));
-    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
-        ;
-
-    I2C_GenerateSTART(I2C2, ENABLE);
-
-    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT))
-        ;
-    I2C_Send7bitAddress(I2C2, 0xB0, I2C_Direction_Receiver);
-
-    while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
-        ;
-
-for (size_t var = 1; var < n; ++var) {
-    while(I2C_GetFlagStatus(I2C2, I2C_FLAG_RXNE) == RESET);
-        I2C_AcknowledgeConfig(I2C2, ENABLE);
-        temp = I2C_ReceiveData(I2C2);
-
-}
-
-
-    while(I2C_GetFlagStatus(I2C2, I2C_FLAG_RXNE) == RESET)
-        I2C_AcknowledgeConfig(I2C2, DISABLE);
-
-    temp = I2C_ReceiveData(I2C2);
-    I2C_GenerateSTOP(I2C2, ENABLE);
-
-    return temp;
-}
-
-/*********************************************************************
- * @fn      AT24CXX_ReadOneByte
- *
- * @brief   Read one data from EEPROM.
- *
- * @param   ReadAddr - Read frist address.
- *
- * @return  temp - Read data.
- */
-u8 AT24CXX_ReadOneByte(u16 ReadAddr)
+u8 IIC_ReadOneByte(u16 ReadAddr)
 {
     u8 temp = 0;
 //        printf("111111/r/n");
@@ -194,13 +115,11 @@ u8 AT24CXX_ReadOneByte(u16 ReadAddr)
     return temp;
 }
 
-u16 AT24CXX_ReadWord(u16 ReadAddr)
+u16 IIC_ReadWord(u16 ReadAddr)
 {
     u16 temp = 0;
     u16 highByte = 0;
     u16 lowByte = 0;
-//    printf("111111/r/n");
-//    Delay_Ms(100);
 
     while(I2C_GetFlagStatus(I2C2, I2C_FLAG_BUSY) != RESET)
          ;
@@ -251,7 +170,7 @@ u16 AT24CXX_ReadWord(u16 ReadAddr)
  *
  * @return  DataToWrite - Write data.
  */
-void AT24CXX_WriteOneByte(u16 WriteAddr, u8 DataToWrite)
+void IIC_WriteOneByte(u16 WriteAddr, u8 DataToWrite)
 {
     while(I2C_GetFlagStatus(I2C2, I2C_FLAG_BUSY) != RESET)
         ;
@@ -280,6 +199,7 @@ void AT24CXX_WriteOneByte(u16 WriteAddr, u8 DataToWrite)
 uint32_t temp[300]={0};
 
 int16_t temp_val=0;
+uint8_t BufferTransTCP[1000]={0};
 
 /*********************************************************************
  * @fn      main
@@ -291,7 +211,7 @@ int16_t temp_val=0;
 int main(void)
 {
 
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+//	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 	SystemCoreClockUpdate();
 	Delay_Init();
 
@@ -313,9 +233,8 @@ int main(void)
 //	        var=0x86;
 
 
-	    temp[var]=AT24CXX_ReadWord(var);
+	    temp[var]=IIC_ReadWord(var);
 
-//        temp[var]=AT24CXX_ReadNByte(var,2);
 //        temp1[var]=AT24CXX_ReadOneByte(var);
 //	    printf("var,Value:0x%02x,%04x,%lf\r\n",var,temp[var],decodeLinear11(temp[var]));
 //	    I2C_ReadRegister(I2C2, I2C_Register)
@@ -324,22 +243,48 @@ int main(void)
 
         }
 
-	    temp_val=0x88;
-         printf("VIN:%lf \r\n",(temp[temp_val]&0x7ff)/4.0);
-        temp_val=0x89;
-        printf("IIN:%lf \r\n",(temp[temp_val]&0x7ff)/256.0);
-        temp_val=0x8b;
-        printf("VOUT:%lf \r\n",(temp[temp_val])/512.0);
-        temp_val=0x8c;
-        printf("IOUT:%lf \r\n",(temp[temp_val]&0x7ff)/256.0);
-        temp_val=0x8d;
-        printf("temp1:%lf \r\n",(temp[temp_val]&0x07ff)/2.0);
-        temp_val=0x8e;
-        printf("temp2:%lf \r\n",(temp[temp_val]&0x07ff)/2.0);
-        temp_val=0x90;
-        printf("fanspeed:%lf \r\n",(temp[temp_val])/1.0);
+//        printf("VIN:%lf \r\n",(temp[0x88]&0x7ff)/4.0);
+//        printf("IIN:%lf \r\n",(temp[0x89]&0x7ff)/256.0);
+//        printf("VOUT:%lf \r\n",(temp[0x8b])/512.0);
+//        printf("IOUT:%lf \r\n",(temp[0x8c]&0x7ff)/256.0);
+//        printf("temp1:%lf \r\n",(temp[0x8d]&0x07ff)/2.0);
+//        printf("temp2:%lf \r\n",(temp[0x8e]&0x07ff)/2.0);
+//        printf("fanspeed:%lf \r\n",(temp[0x90])/1.0);
+//        printf("VI_POUT:%lf \r\n",((temp[0x8c]&0x7ff)/256.0)*((temp[0x8b])/512.0));
 
-        printf("VI_POUT:%lf \r\n",((temp[0x8c]&0x7ff)/256.0)*((temp[0x8b])/512.0));
+
+//        printf("VIN: %lf IIN: %lf VOUT: %lf IOUT: %lf temp1: %lf temp2: %lf fanspeed: %lf VI_POUT: %lf \r\n",
+//            (temp[0x88] & 0x7ff) / 4.0,
+//            (temp[0x89] & 0x7ff) / 256.0,
+//            (temp[0x8b]) / 512.0,
+//            (temp[0x8c] & 0x7ff) / 256.0,
+//            (temp[0x8d] & 0x07ff) / 2.0,
+//            (temp[0x8e] & 0x07ff) / 2.0,
+//            (temp[0x90]) / 1.0,
+//            ((temp[0x8c] & 0x7ff) / 256.0) * ((temp[0x8b]) / 512.0));
+//
+//
+//
+//        sprintf(BufferTransTCP,"DATA: VIN: %lf IIN: %lf VOUT: %lf IOUT: %lf temp1: %lf temp2: %lf fanspeed: %lf VI_POUT: %lf \r\n ",
+//            (temp[0x88] & 0x7ff) / 4.0,
+//            (temp[0x89] & 0x7ff) / 256.0,
+//            (temp[0x8b]) / 512.0,
+//            (temp[0x8c] & 0x7ff) / 256.0,
+//            (temp[0x8d] & 0x07ff) / 2.0,
+//            (temp[0x8e] & 0x07ff) / 2.0,
+//            (temp[0x90]) / 1.0,
+//            ((temp[0x8c] & 0x7ff) / 256.0) * ((temp[0x8b]) / 512.0));
+
+        printf("DATA: VIN: %lf IIN: %lf VOUT: %lf IOUT: %lf temp1: %lf temp2: %lf fanspeed: %lf VI_POUT: %lf \r\n ",
+            (temp[0x88] & 0x7ff) / 4.0,
+            (temp[0x89] & 0x7ff) / 256.0,
+            (temp[0x8b]) / 512.0,
+            (temp[0x8c] & 0x7ff) / 256.0,
+            (temp[0x8d] & 0x07ff) / 2.0,
+            (temp[0x8e] & 0x07ff) / 2.0,
+            (temp[0x90]) / 1.0,
+            ((temp[0x8c] & 0x7ff) / 256.0) * ((temp[0x8b]) / 512.0));
+
 
 	}
 }
